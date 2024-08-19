@@ -2,6 +2,7 @@ import requests
 import json
 import os
 
+
 class PocketClient:
     def __init__(self, consumer_key, redirect_uri='https://example.com'):
         self.consumer_key = consumer_key
@@ -37,8 +38,10 @@ class PocketClient:
 
     def authorize_app(self, request_token):
         """Generate the authorization URL for the user to authorize the app."""
-        auth_url = f"https://getpocket.com/auth/authorize?request_token={request_token}&redirect_uri={self.redirect_uri}"
-        print(f"Please go to the following URL and authorize the app: {auth_url}")
+        auth_url = f"https://getpocket.com/auth/authorize?request_token={
+            request_token}&redirect_uri={self.redirect_uri}"
+        print(
+            f"Please go to the following URL and authorize the app: {auth_url}")
         input("Once you have authorized the app, press Enter to continue...")
 
     def get_access_token(self, request_token):
@@ -71,37 +74,51 @@ class PocketClient:
             'consumer_key': self.consumer_key,
             'access_token': self.access_token,
         }
-        
-        # Optional parameters
-        if state: data['state'] = state
-        if favorite: data['favorite'] = favorite
-        if tag: data['tag'] = tag
-        if content_type: data['contentType'] = content_type
-        if sort: data['sort'] = sort
-        if detail_type: data['detailType'] = detail_type
-        if search: data['search'] = search
-        if domain: data['domain'] = domain
-        if since: data['since'] = since
-        if count: data['count'] = count
-        if offset: data['offset'] = offset
 
-        response = requests.post(self.base_url, headers=self.headers, data=data)
-        
+        # Optional parameters
+        if state:
+            data['state'] = state
+        if favorite:
+            data['favorite'] = favorite
+        if tag:
+            data['tag'] = tag
+        if content_type:
+            data['contentType'] = content_type
+        if sort:
+            data['sort'] = sort
+        if detail_type:
+            data['detailType'] = detail_type
+        if search:
+            data['search'] = search
+        if domain:
+            data['domain'] = domain
+        if since:
+            data['since'] = since
+        if count:
+            data['count'] = count
+        if offset:
+            data['offset'] = offset
+
+        response = requests.post(
+            self.base_url, headers=self.headers, data=data)
+
         if response.status_code == 200:
             return response.json()
         else:
             response.raise_for_status()
 
+
 # Example usage:
 if __name__ == "__main__":
     # Replace with your actual consumer_key
     CONSUMER_KEY = os.getenv('POCKET_CONSUMER_KEY')
-    
+
     pocket_client = PocketClient(CONSUMER_KEY)
-    
+
     # Retrieve 5 unread items, sorted by newest, with full details
-    items = pocket_client.retrieve(state='unread', count=5, sort='newest', detail_type='complete')
-    
+    items = pocket_client.retrieve(
+        state='unread', count=5, sort='newest', detail_type='complete')
+
     # Print retrieved items
     for item_id, item_details in items['list'].items():
         print(f"Item ID: {item_id}")
