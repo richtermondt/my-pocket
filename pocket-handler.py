@@ -1,91 +1,109 @@
-import os
 import requests
+import json
+import os
 
-# Step 1: Get your consumer_key from the Pocket Developer Portal
-CONSUMER_KEY = os.getenv('POCKET_CONSUMER_KEY')
+class PocketClient:
+    def __init__(self, consumer_key, redirect_uri='https://example.com'):
+        self.consumer_key = consumer_key
+        self.redirect_uri = redirect_uri
+        self.access_token = self.load_access_token()
+        self.base_url = "https://getpocket.com/v3/get"
+        self.headers = {'X-Accept': 'application/json'}
 
-# Step 2: Obtain a request token
-def get_request_token(consumer_key):
-    url = "https://getpocket.com/v3/oauth/request"
-    headers = {'X-Accept': 'application/json'}
-    data = {'consumer_key': consumer_key, 'redirect_uri': 'https://example.com'}
-    
-    response = requests.post(url, headers=headers, data=data)
-    response_data = response.json()
-    return response_data['code']
-
-# Step 3: Redirect the user to Pocket to authorize your app
-def authorize_app(request_token):
-    auth_url = f"https://getpocket.com/auth/authorize?request_token={request_token}&redirect_uri=https://example.com"
-    print(f"Please go to the following URL and authorize the app: {auth_url}")
-
-# Step 4: Convert the request token into an access token
-def get_access_token(consumer_key, request_token):
-    try:
-        url = "https://getpocket.com/v3/oauth/authorize"
-        headers = {'X-Accept': 'application/json'}
-        data = {'consumer_key': consumer_key, 'code': request_token}
-
-        response = requests.post(url, headers=headers, data=data)
-        
-        print(f"Response Status Code: {response.status_code}")
-        print(f"Response Text: {response.text}")
-        
-        if response.status_code == 200:
-            response_data = response.json()
-            return response_data['access_token']
-        else:
-            print("Error: Failed to retrieve access token")
-            return None
-    except requests.exceptions.RequestException as e:
-        print(f"Network error occurred: {e}")
+    def load_access_token(self):
+        """Load access token from a file, if it exists."""
+        if os.path.exists("access_token.json"):
+            with open("access_token.json", "r") as file:
+                data = json.load(file)
+                return data.get("access_token")
         return None
 
-# Step 5: Retrieve saved items
-def get_saved_items(consumer_key, access_token):
-    url = "https://getpocket.com/v3/get"
-    headers = {'X-Accept': 'application/json'}
-    data = {
-        'consumer_key': consumer_key,
-        'access_token': access_token,
-        'count': 10,  # Number of items to retrieve
-        'detailType': 'complete'  # Include full details
-    }
-    
-    response = requests.post(url, headers=headers, data=data)
-    return response.json()
+    def save_access_token(self, access_token):
+        """Save access token to a file."""
+        with open("access_token.json", "w") as file:
+            json.dump({"access_token": access_token}, file)
 
-def get_article_details(consumer_key, access_token, item_id):
-    url = "https://getpocket.com/v3/get"
-    headers = {'X-Accept': 'application/json'}
-    data = {
-        'consumer_key': consumer_key,
-        'access_token': access_token,
-        'item_id': item_id,
-        'detailType': 'complete'  # Include full details
-    }
-    
-    response = requests.post(url, headers=headers, data=data)
-    return response.json()
+    def get_request_token(self):
+        """Obtain a request token from Pocket."""
+        url = "https://getpocket.com/v3/oauth/request"
+        headers = {'X-Accept': 'application/json'}
+        data = {
+            'consumer_key': self.consumer_key,
+            'redirect_uri': self.redirect_uri
+        }
+        response = requests.post(url, headers=headers, data=data)
+        response_data = response.json()
+        return response_data['code']
 
-# Example Usage
+    def authorize_app(self, request_token):
+        """Generate the authorization URL for the user to authorize the app."""
+        auth_url = f"https://getpocket.com/auth/authorize?request_token={request_token}&redirect_uri={self.redirect_uri}"
+        print(f"Please go to the following URL and authorize the app: {auth_url}")
+        input("Once you have authorized the app, press Enter to continue...")
+
+    def get_access_token(self, request_token):
+        """Convert the request token into an access token."""
+        url = "https://getpocket.com/v3/oauth/authorize"
+        headers = {'X-Accept': 'application/json'}
+        data = {
+            'consumer_key': self.consumer_key,
+            'code': request_token
+        }
+        response = requests.post(url, headers=headers, data=data)
+        response_data = response.json()
+        return response_data['access_token']
+
+    def authenticate(self):
+        """Handle the complete OAuth flow to obtain an access token for the first time."""
+        if self.access_token is None:
+            request_token = self.get_request_token()
+            self.authorize_app(request_token)
+            self.access_token = self.get_access_token(request_token)
+            self.save_access_token(self.access_token)
+            print("Access token obtained and saved.")
+
+    def retrieve(self, state=None, favorite=None, tag=None, content_type=None, sort=None, detail_type=None, search=None,
+                 domain=None, since=None, count=None, offset=None):
+        """Retrieve items from Pocket with various options."""
+        self.authenticate()  # Ensure the user is authenticated before making requests
+
+        data = {
+            'consumer_key': self.consumer_key,
+            'access_token': self.access_token,
+        }
+        
+        # Optional parameters
+        if state: data['state'] = state
+        if favorite: data['favorite'] = favorite
+        if tag: data['tag'] = tag
+        if content_type: data['contentType'] = content_type
+        if sort: data['sort'] = sort
+        if detail_type: data['detailType'] = detail_type
+        if search: data['search'] = search
+        if domain: data['domain'] = domain
+        if since: data['since'] = since
+        if count: data['count'] = count
+        if offset: data['offset'] = offset
+
+        response = requests.post(self.base_url, headers=self.headers, data=data)
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            response.raise_for_status()
+
+# Example usage:
 if __name__ == "__main__":
-    # Get request token
-    request_token = get_request_token(CONSUMER_KEY)
+    # Replace with your actual consumer_key
+    CONSUMER_KEY = os.getenv('POCKET_CONSUMER_KEY')
     
-    # Authorize app (this will output a URL you need to visit in your browser)
-    authorize_app(request_token)
+    pocket_client = PocketClient(CONSUMER_KEY)
     
-    input("Once you have completed the authorization in your browser, press Enter to continue...")
-   
-    # Once authorized, convert the request token to an access token
-    access_token = get_access_token(CONSUMER_KEY, request_token)
+    # Retrieve 5 unread items, sorted by newest, with full details
+    items = pocket_client.retrieve(state='unread', count=5, sort='newest', detail_type='complete')
     
-    # Retrieve saved items from Pocket
-    saved_items = get_saved_items(CONSUMER_KEY, access_token)
-    
-    # Print the retrieved items
-    for item_id, item_details in saved_items['list'].items():
+    # Print retrieved items
+    for item_id, item_details in items['list'].items():
         print(f"Item ID: {item_id}")
         print(f"Title: {item_details.get('resolved_title')}")
         print(f"URL: {item_details.get('resolved_url')}")
