@@ -67,7 +67,25 @@ class PocketClient:
 
     def retrieve(self, state=None, favorite=None, tag=None, content_type=None, sort=None, detail_type=None, search=None,
                  domain=None, since=None, count=None, offset=None):
-        """Retrieve items from Pocket with various options."""
+        """
+        Retrieve items from Pocket with various options.
+
+        Parameters:
+        - state: 'unread', 'archive', 'all'
+        - favorite: '0' (not favorited), '1' (favorited)
+        - tag: String tag or '_untagged_' to filter items without tags
+        - content_type: 'article', 'video', 'image'
+        - sort: 'newest', 'oldest', 'title', 'site'
+        - detail_type: 'simple' (minimal data) or 'complete' (full data)
+        - search: Search for a specific string in item titles and URLs
+        - domain: Filter items by a specific domain (e.g., 'example.com')
+        - since: Retrieve items modified since a given timestamp (Unix time)
+        - count: Number of items to retrieve
+        - offset: Offset for pagination
+
+        Returns:
+        - JSON response with retrieved items
+        """
         self.authenticate()  # Ensure the user is authenticated before making requests
 
         data = {
